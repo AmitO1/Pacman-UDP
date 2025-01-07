@@ -44,24 +44,26 @@ def get_key(key_list):
     return None
 
 def update_map(game_map: str, c_coords: tuple, s_coords: tuple):
-    game_map = game_map.replace('C', ' ')
-    game_map = game_map.replace('S', ' ')
+    game_map = game_map.replace('C', 'F')
+    game_map = game_map.replace('S', 'F')
     list_map = []
     row = []
     for char in game_map:
         if char == '\n':
+            row.append(char)
             list_map.append(row)
             row = []
         else:
             row.append(char)
+            
+    list_map.append(row)
+    
     list_map[c_coords[0]][c_coords[1]] = 'C'
     list_map[s_coords[0]][s_coords[1]] = 'S'
     game_map = ''
     for row in list_map:
         for col in row:
-            game_map += col
-        game_map+= '\n'
-        
+            game_map += col    
     return game_map
 
 def unpack_message(data):

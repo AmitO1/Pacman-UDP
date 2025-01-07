@@ -39,58 +39,18 @@ def read_map(path):
         return map_data
     
 def transform_map(map_string):
-    """
-    Transforms the input map string to a visually formatted version.
-
-    Args:
-        map_string (str): A string representation of the map, where:
-                          - 'F' represents free space
-                          - 'W' represents a wall
-                          - 'P' represents a point
-                          - 'C' represents cman location
-                          - 'S' represents ghost location
-
-    Returns:
-        str: A transformed map string with visual formatting.
-    """
-    # Split the map string into lines
-    map_lines = map_string.splitlines()
+    # Mapping for better display
+    display_mapping = {
+        "W": "🟦",  # Wall
+        "P": "⚪",  # Point
+        "F": "  ",  # Free space (double space for better spacing)
+        "C": "😃",  # Pacman
+        "S": "👻",  # Ghost
+    }
     
-    # Calculate the dimensions of the map
-    rows = len(map_lines)
-    cols = max(len(line) for line in map_lines)
-
-    # Initialize an empty list for the transformed map
-    transformed_lines = []
-
-    # Process each row in the map
-    for i, line in enumerate(map_lines):
-        transformed_line = []
-        for j, char in enumerate(line):
-            if char == 'F':
-                transformed_line.append(' ')  # Free space becomes an empty char
-            elif char == 'W':
-                # Determine if the wall should be '|' or '-'
-                if i == 0 or i == rows - 1:
-                    transformed_line.append('-')  # Top and bottom walls are horizontal
-                elif j == 0 or j == len(line) - 1:
-                    transformed_line.append('|')  # Left and right walls are vertical
-                elif (j > 0 and j < cols - 1 and line[j - 1] == 'W' and line[j + 1] == 'W'):
-                    transformed_line.append('-')  # Horizontal walls in the middle
-                elif (i > 0 and i < rows - 1 and len(map_lines[i - 1]) > j and map_lines[i + 1][j] == 'W'):
-                    transformed_line.append('|')  # Vertical walls in the middle
-                else:
-                    transformed_line.append('-')  # Default to horizontal for isolated walls
-            elif char == 'P':
-                transformed_line.append('*')  # Point becomes '*'
-            elif char == 'C':
-                transformed_line.append('C')  # cman location remains 'C'
-            elif char == 'S':
-                transformed_line.append('S')  # Ghost location remains 'S'
-            else:
-                transformed_line.append(' ')  # Default to space for unknown characters
-        # Join the transformed line and append to the list
-        transformed_lines.append(''.join(transformed_line))
-
-    # Join all the transformed lines with newline characters
-    return '\n'.join(transformed_lines)
+    # Transform the map
+    transformed_map = ""
+    for line in map_string.strip().split("\n"):
+        transformed_line = "".join(display_mapping.get(char, char) for char in line)
+        transformed_map += transformed_line + "\n"
+    return transformed_map
