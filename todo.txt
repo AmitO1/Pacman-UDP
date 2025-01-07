@@ -1,0 +1,3 @@
+handle errors
+update map coorectly - points
+handle new game 
