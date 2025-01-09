@@ -117,8 +117,6 @@ def unpack_message(data):
         }
         
     else:
-        # Handle other opcodes here as needed
-        print(f"Unknown opcode: {opcode}")
         return None
 
 is_game_over = False 
@@ -145,11 +143,23 @@ try:
                 message = struct.pack('BB', OPCODE_JOIN, int(ROLE))
                 client_socket.sendto(message, (SERVER_ADDRESS, PORT))
                 logged_in = True
-                
+            
+            elif logged_in and not is_playable:
+                    key_filter = ['q']
+                    key_list = cman_utils.get_pressed_keys(key_filter) # i didnt check this because i was in mac my orginial was = input(press keys)
+                    key = get_key(key_list)
+                    if key == 'q':
+                        message = struct.pack('B',OPCODE_QUIT)
+                        client_socket.sendto(message, (SERVER_ADDRESS, PORT))
+                        is_game_over = True
+                        client_socket.close()
+                        final_message = "Quitted from the game"
+                           
             elif is_playable:
                 print(cman_game_map.transform_map(map_g))
                 if ROLE != 0:
-                    key_list = input("Enter keys movement:")
+                    key_filter = ['a','w','s','d','q']
+                    key_list = cman_utils.get_pressed_keys(key_filter) # i didnt check this because i was in mac my orginial was = input(press keys)
                     key = get_key(key_list)
                     if key == 'q':
                         message = struct.pack('B',OPCODE_QUIT)
@@ -196,7 +206,7 @@ try:
                 if unpacked_data['winner'] == 1:
                     final_message = 'Winner is Cman, Cman scored ' + str(unpacked_data['c_score']) + ' points and got caught ' + str(unpacked_data['s_score']) + ' times!'
                 else:
-                    final_message = 'Winner is Ghost, Cman was caught 3 times and scored only ' + str(unpacked_data['c_score']) + 'points!'
+                    final_message = 'Winner is Ghost, Cman was caught 3 times and scored only ' + str(unpacked_data['c_score']) + ' points!'
                 is_game_over = True 
                               
         cman_utils.clear_print()
@@ -209,16 +219,3 @@ finally:
     print(final_message)
     client_socket.close()
 
-
-
-"""
-            elif logged_in and not is_playable:
-                    key_list = input("Enter keys movement:")
-                    key = get_key(key_list)
-                    if key == 'q':
-                        message = struct.pack('B',OPCODE_QUIT)
-                        client_socket.sendto(message, (SERVER_ADDRESS, PORT))
-                        is_game_over = True
-                        client_socket.close()
-                        final_message = "Quitted from the game"
-"""

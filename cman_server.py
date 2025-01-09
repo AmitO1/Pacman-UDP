@@ -154,21 +154,23 @@ try:
                         
                 elif action == 'quit':
                     print(f"{'cman' if addr == cman_addr else 'ghost' if addr == ghost_addr else 'watcher'} is quitting")
-                    if addr == cman_addr:
-                        is_cman = False
-                        cman_addr = ''
-                        clients.remove(addr)
-                        winner = 2
+                    if addr == cman_addr or addr == ghost_addr:
+                        if addr == cman_addr:
+                            is_cman = False
+                            cman_addr = ''
+                            winner = 2
+                            
+                        if addr == ghost_addr:
+                            is_ghost = False
+                            ghost_addr = ''
+                            winner = 1
+                            
+                        scores = game.get_game_progress()    
+                        s_score = 3 - scores[0]
+                        c_score = scores[1]
+                        is_game_end = True
                         
-                    if addr == ghost_addr:
-                        is_ghost = False
-                        ghost_addr = ''
-                        clients.remove(addr)
-                        winner = 1
-                        
-                    s_score = 3 - scores[0]
-                    c_score = scores[1]
-                    is_game_end = True
+                    clients.remove(addr)                      
                     
                 elif 'ERROR' in action:
                     print("An ERROR has occured")
