@@ -58,7 +58,7 @@ def handle_login(attributes):
     if(attributes[0] == 0):
         return WACTCHER_JOIN
     
-    return ERROR_ILLEGAL
+    return ERROR_ILLEGAL #impossible to read due to argparse + error = disconned no need to handle
 
 
         
@@ -85,11 +85,16 @@ clients = set()
 game = cman_game.Game('map.txt')
 freeze_cman = 0
 freeze_ghost = 0
-is_cman_before_ghost = False
+clients_to_remove = set()
 
 try:
-    while True:
-        # Use select to wait for readable or writable sockets
+    while True:   
+            
+        for client in clients_to_remove:
+            print(f"test: {client}")
+            clients.remove(client)
+        clients_to_remove = set()
+        
         readable, _, _ = select.select(read_sockets, [], [],1) #TODO lower delay - this high for mac
         # Handle readable sockets
         for s in readable:
@@ -109,8 +114,6 @@ try:
                 if action == CMAN_JOIN:
                     print("Cman joined!")
                     cman_addr = addr
-                    if not is_ghost:
-                        is_cman_before_ghost = True
                     
                 elif action == GHOST_JOIN:
                     print("Ghost joined!")
@@ -139,8 +142,16 @@ try:
                     if addr == ghost_addr:
                         print(f"game state {game.state}")
                         
-                elif action == 'quit':
-                    print(f"{'cman' if is_cman else 'ghost' if is_ghost else 'watcher'} is quitting")
+                elif action == 'quit':#TODO - handle winner 
+                    print(f"{'cman' if addr == cman_addr else 'ghost' if addr == ghost_addr else 'watcher'} is quitting")
+                    if addr == cman_addr:
+                        is_cman = False
+                        cman_addr = ''
+                        clients.remove(addr)
+                    if addr == ghost_addr:
+                        is_ghost = False
+                        ghost_addr = ''
+                        clients.remove(addr)
                     
                 elif 'ERROR' in action:
                     print("An ERROR has occured")
@@ -169,6 +180,8 @@ try:
                 print(f"Send error to client in address: {client}")
                 server_socket.sendto(error_queue[client],client)
                 del error_queue[client]
+                clients_to_remove.add(client)
+                
             elif client == cman_addr:
                 print(f"sending cman to c_coords: {c_coords}")
                 packed_message = struct.pack(

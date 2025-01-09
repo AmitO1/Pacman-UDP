@@ -67,7 +67,9 @@ def update_map(game_map: str, c_coords: tuple, s_coords: tuple, collected:str):
     for i, row in enumerate(list_map):
         for j, col in enumerate(row):
             if (i,j) in point_dict:
-                col = 'P' if collected[count] == '1' else 'F' #check maybe new assignment needed
+                if col != 'S' and col != 'C':
+                    col = 'P' if collected[count] == '1' else 'F' 
+                    
                 count+=1
                 
             game_map += col    
@@ -106,7 +108,7 @@ def unpack_message(data):
         print(f"Unknown opcode: {opcode}")
         return None
 
-is_error = False
+is_error = False #used only for helping quitting 
 logged_in = False
 is_playable = False
 map_g = cman_game_map.read_map('map.txt')
@@ -118,7 +120,7 @@ client_socket.setblocking(False)
 
 key_list = []
 
-
+#TODO - beforte sumbitting change function to get_pressed_keys
 try:
     while True and not is_error:
         # Get input from the user
@@ -130,7 +132,6 @@ try:
                 client_socket.sendto(message, (SERVER_ADDRESS, PORT))
                 logged_in = True
             elif is_playable:
-                cman_utils.clear_print()
                 print(cman_game_map.transform_map(map_g))
                 if ROLE != 0:
                     key_list = input("Enter keys movement:")
@@ -138,6 +139,9 @@ try:
                     if key == 'q':
                         message = struct.pack('B',OPCODE_QUIT)
                         client_socket.sendto(message, (SERVER_ADDRESS, PORT))
+                        is_error = True
+                        client_socket.close()
+                        
                     elif key == 'w':
                         message = struct.pack('BB',OPCODE_PLAYER_MOVEMENT,int(0))
                         client_socket.sendto(message, (SERVER_ADDRESS, PORT))   
@@ -151,7 +155,7 @@ try:
                         message = struct.pack('BB',OPCODE_PLAYER_MOVEMENT,int(3))
                         client_socket.sendto(message, (SERVER_ADDRESS, PORT)) 
                             
-        if client_socket in readable:
+        if client_socket in readable and not is_error:
             data, server = client_socket.recvfrom(1024)  
             unpacked_data = unpack_message(data)
             
@@ -164,10 +168,13 @@ try:
                     
                 is_error = True
                 client_socket.close()
+                
             elif unpacked_data['opcode'] == OPCODE_GAME_STATE_UPDATE:          
                 map_g = update_map(map_g,unpacked_data['c_coords'],unpacked_data['s_coords'],unpacked_data['collected'])
                 if unpacked_data['freeze'] == 1:
                     is_playable= True
+                              
+        cman_utils.clear_print()
             
         
 except KeyboardInterrupt:
