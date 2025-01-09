@@ -87,8 +87,10 @@ freeze_cman = 0
 freeze_ghost = 0
 clients_to_remove = set()
 
+is_game_end = False
+
 try:
-    while True:   
+    while True and not is_game_end:   
             
         for client in clients_to_remove:
             print(f"test: {client}")
@@ -134,24 +136,39 @@ try:
                         freeze_cman = 1
                         if addr == ghost_addr:
                             print("ghost moving from here")
-                            game.apply_move(1,action)
+                            is_state_change = game.apply_move(1,action)
                         if addr == cman_addr:
                             print("cman moving from here")
-                            game.apply_move(0,action)
+                            is_state_change = game.apply_move(0,action)
+                            
+                        if is_state_change:
+                            if game.state == cman_game.State.WIN:
+                                winner = game.get_winner() + 1
+                                scores = game.get_game_progress()
+                                s_score = 3 - scores[0]
+                                c_score = scores[1]
+                                is_game_end = True
                             
                     if addr == ghost_addr:
                         print(f"game state {game.state}")
                         
-                elif action == 'quit':#TODO - handle winner 
+                elif action == 'quit':
                     print(f"{'cman' if addr == cman_addr else 'ghost' if addr == ghost_addr else 'watcher'} is quitting")
                     if addr == cman_addr:
                         is_cman = False
                         cman_addr = ''
                         clients.remove(addr)
+                        winner = 2
+                        
                     if addr == ghost_addr:
                         is_ghost = False
                         ghost_addr = ''
                         clients.remove(addr)
+                        winner = 1
+                        
+                    s_score = 3 - scores[0]
+                    c_score = scores[1]
+                    is_game_end = True
                     
                 elif 'ERROR' in action:
                     print("An ERROR has occured")
@@ -182,6 +199,17 @@ try:
                 del error_queue[client]
                 clients_to_remove.add(client)
                 
+            elif is_game_end:
+                packed_message = struct.pack(
+                    '!B B B B',
+                    OPCODE_GAME_END,
+                    winner,
+                    s_score,
+                    c_score
+                )
+                server_socket.sendto(packed_message,client)
+                clients_to_remove.add(client)
+                
             elif client == cman_addr:
                 print(f"sending cman to c_coords: {c_coords}")
                 packed_message = struct.pack(
@@ -210,13 +238,16 @@ try:
                 packed_message = struct.pack(
                 '!B B B B B B B 40s',
                 OPCODE_GAME_STATE_UPDATE,  
-                0,  
+                freeze_ghost,  
                 c_coords[0], c_coords[1],  
                 s_coords[0], s_coords[1],  
                 attemptes,  
                 collected.encode('utf-8')  
                 )
                 server_socket.sendto(packed_message,client)
+                
+        if is_game_end:
+            server_socket.close()
 
 
 except KeyboardInterrupt:
