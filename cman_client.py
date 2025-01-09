@@ -3,6 +3,7 @@ import select
 import struct
 import argparse
 import cman_game_map
+import cman_game
 import cman_utils
 
 # Setup argparse to handle command-line arguments
@@ -43,11 +44,13 @@ def get_key(key_list):
             return key
     return None
 
-def update_map(game_map: str, c_coords: tuple, s_coords: tuple):
+def update_map(game_map: str, c_coords: tuple, s_coords: tuple, collected:str):
     game_map = game_map.replace('C', 'F')
     game_map = game_map.replace('S', 'F')
     list_map = []
     row = []
+    count = 0
+    point_dict = cman_game.Game('map.txt').get_points() #used only for points location constant throught the game
     for char in game_map:
         if char == '\n':
             row.append(char)
@@ -61,8 +64,12 @@ def update_map(game_map: str, c_coords: tuple, s_coords: tuple):
     list_map[c_coords[0]][c_coords[1]] = 'C'
     list_map[s_coords[0]][s_coords[1]] = 'S'
     game_map = ''
-    for row in list_map:
-        for col in row:
+    for i, row in enumerate(list_map):
+        for j, col in enumerate(row):
+            if (i,j) in point_dict:
+                col = 'P' if collected[count] == '1' else 'F' #check maybe new assignment needed
+                count+=1
+                
             game_map += col    
     return game_map
 
@@ -82,7 +89,6 @@ def unpack_message(data):
         unpacked_data = struct.unpack('!B B B B B B 40s', message)
         freeze = unpacked_data[0]
         c_coords = (unpacked_data[1], unpacked_data[2])
-        print(f"c_coords: {c_coords}")
         s_coords = (unpacked_data[3], unpacked_data[4])
         attempts = unpacked_data[5]
         collected = unpacked_data[6].decode('utf-8')
@@ -100,8 +106,9 @@ def unpack_message(data):
         print(f"Unknown opcode: {opcode}")
         return None
 
-
+is_error = False
 logged_in = False
+is_playable = False
 map_g = cman_game_map.read_map('map.txt')
 
 # Create a UDP socket
@@ -113,8 +120,7 @@ key_list = []
 
 
 try:
-    while True:
-        print(cman_game_map.transform_map(map_g))
+    while True and not is_error:
         # Get input from the user
         readable, writable, _ = select.select([client_socket], [client_socket], [])
         if client_socket in writable:
@@ -123,11 +129,12 @@ try:
                 message = struct.pack('BB', OPCODE_JOIN, int(role))
                 client_socket.sendto(message, (SERVER_ADDRESS, PORT))
                 logged_in = True
-            else:
+            elif is_playable:
+                cman_utils.clear_print()
+                print(cman_game_map.transform_map(map_g))
                 if ROLE != 0:
                     key_list = input("Enter keys movement:")
                     key = get_key(key_list)
-                    print(key)
                     if key == 'q':
                         message = struct.pack('B',OPCODE_QUIT)
                         client_socket.sendto(message, (SERVER_ADDRESS, PORT))
@@ -148,13 +155,20 @@ try:
             data, server = client_socket.recvfrom(1024)  
             unpacked_data = unpack_message(data)
             
-            #TODO change implementation
+            #in case if any error server close connection and client disconnect
             if unpacked_data['opcode'] == OPCODE_ERROR:
+                error_msg = unpacked_data['error_msg']
+                
+                if error_msg == ERROR_CMAN or error_msg == ERROR_GHOST:
+                    print(f"{'Cman' if error_msg == ERROR_CMAN else 'Ghost'} already taken closing connection...")
+                    
+                is_error = True
                 client_socket.close()
             elif unpacked_data['opcode'] == OPCODE_GAME_STATE_UPDATE:          
-                map_g = update_map(map_g,unpacked_data['c_coords'],unpacked_data['s_coords'])
+                map_g = update_map(map_g,unpacked_data['c_coords'],unpacked_data['s_coords'],unpacked_data['collected'])
+                if unpacked_data['freeze'] == 1:
+                    is_playable= True
             
-        cman_utils.clear_print()
         
 except KeyboardInterrupt:
     print("\nClient interrupted. Exiting.")

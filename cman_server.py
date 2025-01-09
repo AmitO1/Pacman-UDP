@@ -85,11 +85,12 @@ clients = set()
 game = cman_game.Game('map.txt')
 freeze_cman = 0
 freeze_ghost = 0
+is_cman_before_ghost = False
 
 try:
     while True:
         # Use select to wait for readable or writable sockets
-        readable, _, _ = select.select(read_sockets, [], []) 
+        readable, _, _ = select.select(read_sockets, [], [],1) #TODO lower delay - this high for mac
         # Handle readable sockets
         for s in readable:
             if s is server_socket:
@@ -108,6 +109,8 @@ try:
                 if action == CMAN_JOIN:
                     print("Cman joined!")
                     cman_addr = addr
+                    if not is_ghost:
+                        is_cman_before_ghost = True
                     
                 elif action == GHOST_JOIN:
                     print("Ghost joined!")
@@ -140,16 +143,11 @@ try:
                     print(f"{'cman' if is_cman else 'ghost' if is_ghost else 'watcher'} is quitting")
                     
                 elif 'ERROR' in action:
-                    print("there an error im hererere")
+                    print("An ERROR has occured")
                     error_message_bytes = action.encode('utf-8')
                     response = struct.pack('!B 6s', OPCODE_ERROR,error_message_bytes) 
                     error_queue[addr] = response
                     
-                #check if both connected and game state isnt play / start already to update game status
-                if is_ghost and is_cman and game.state == cman_game.State.WAIT :
-                    game.state = cman_game.State.START
-                    if addr == cman_addr:
-                        freeze_cman = 1
         
         coords = game.get_current_players_coords() 
         c_coords = coords[0]
@@ -158,6 +156,15 @@ try:
         collected = dict_to_binary_string(game.get_points())  
             
         for client in clients:
+            
+            #check if both connected and game state isnt play / start already to update game status
+            if is_ghost and is_cman and game.state == cman_game.State.WAIT :
+                
+                game.state = cman_game.State.START
+                
+                if client == cman_addr:
+                    freeze_cman = 1
+                    
             if client in error_queue:
                 print(f"Send error to client in address: {client}")
                 server_socket.sendto(error_queue[client],client)
