@@ -132,11 +132,11 @@ client_socket.setblocking(False)
 
 key_list = []
 
-#TODO - beforte sumbitting change function to get_pressed_keys
+
 try:
     while True and not is_game_over:
         # Get input from the user
-        readable, writable, _ = select.select([client_socket], [client_socket], [])
+        readable, writable, _ = select.select([client_socket], [client_socket], [],1)
         if client_socket in writable:
                 
             if logged_in == False:

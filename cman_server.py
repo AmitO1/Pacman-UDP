@@ -97,7 +97,7 @@ try:
             clients.remove(client)
         clients_to_remove = set()
         
-        readable, _, _ = select.select(read_sockets, [], [],1) #TODO lower delay - this high for mac
+        readable, _, _ = select.select(read_sockets, [], [],1) #delay only in case there are no messages so updated can be a bit slower
         # Handle readable sockets
         for s in readable:
             if s is server_socket:
